@@ -1,4 +1,4 @@
-#Essay generator
+# Essay generator
 
 this project is basically scraping resources and
 your bibliography and generates an essay.

@@ -34,41 +34,58 @@ class Embed:
         """
         return self.client
 
-    def embed_text(self, documents: List[dict[str, str]]) -> None:
+    def embed_chunks(self, documents: List[dict[str, str]]) -> None:
         """Store embeddings for input documents using OpenAI embeddings.
         
         Args:
             documents: List of dictionaries containing text and id
         """
-        embedded_documents = []
+
+        print("Embedding chunks...")
+
         for doc in documents:
-            print(doc)
-            embedding = self.embeddings.embed_query(doc)
-            embedded_documents.append({
+            embedding = self.embeddings.embed_query(doc["text"])
+
+            embedded_doc = {
                 "id": str(uuid.uuid4()),
-                "text": doc, 
-                "embedding": embedding
-            })
-        
-        self.store_embeddings(embedded_documents)
+                "text": doc["text"], 
+                "embedding": embedding,
+                "metadata": {
+                    "title": doc["file_title"],
+                }
+            }
+            self.store_embeddings(embedded_doc)
+            print("Embedded chunk.")
+
+
+        print("Done embedding chunks")
+
+
 
     def embed(self, text: str) -> List[float]:
         return self.embeddings.embed_query(text)
     
-    def store_embeddings(self, documents: List[dict[str, List[float]]]):
+    
+    def store_embeddings(self, document: dict[str, List[float]]):
         """Store embeddings in the ChromaDB database.
         
         Args:
             documents: List of dictionaries containing embeddings and text
         """
         collection = self.client.get_or_create_collection(self.collection_name)
+        
+        print(document["metadata"]["title"])
+        
         collection.add(
-            embeddings=[doc["embedding"] for doc in documents],
-            documents=[doc["text"] for doc in documents],
-            ids=[doc["id"] for doc in documents],
-            metadatas=[{"text": doc["text"]} for doc in documents],
+            embeddings=document["embedding"],
+            documents=document["text"],
+            ids=document["id"],
+            metadatas={"title": document["metadata"]["title"]},
         )
+
+
     
+
     def get_embeddings(self, query: str) -> List[float]:
         """Get embeddings for a query using the ChromaDB database.
         

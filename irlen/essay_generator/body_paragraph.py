@@ -1,23 +1,30 @@
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-from typing import List, Dict
+from typing import Dict
 import os
 
-class ParagraphGenerator:
-    def __init__(self, api_key):
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class BodyParagraphGenerator:
+    def __init__(self):
         """
+
         Initialize the generator with OpenAI API key
         """
-        os.environ["OPENAI_API_KEY"] = api_key
-        self.llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
+        self.llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.7)
         
+
+
         # Create a prompt template with global context
         template = """
         Global Topic: {global_topic}
         
         Task: Generate an academic paragraph addressing the following specific question within the context 
-        of the global topic, using the provided resources.
+        of the global topic, using the provided resources. Then provide a concise thesis statement
+        (maximum 10 words) that captures the core argument.
         
         Specific Question: {question}
         
@@ -34,13 +41,19 @@ class ParagraphGenerator:
         - Keep to one cohesive paragraph
         - Make clear connections between the specific question and the global topic
         
-        Academic Paragraph:
+        Please format your response as follows:
+        
+        PARAGRAPH:
+        [Your academic paragraph here]
+        
+        THESIS:
+        [Core argument in 10 words or less]
         """
         
         self.prompt = ChatPromptTemplate.from_template(template)
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt)
     
-    def generate_paragraph(self, global_topic: str, question: str, resources: str) -> str:
+    def generate_paragraph(self, global_topic: str, question: str, resources: str) -> Dict[str, str]:
         """
         Generate an academic paragraph based on the global topic, specific question, and resources
         
@@ -50,7 +63,7 @@ class ParagraphGenerator:
             resources (str): Relevant resources and references
             
         Returns:
-            str: Generated academic paragraph
+            Dict[str, str]: Dictionary containing the generated paragraph and thesis
         """
         
         try:
@@ -59,9 +72,24 @@ class ParagraphGenerator:
                 "question": question,
                 "resources": resources
             })
-            return result['text'].strip()
+            
+            # Split the response into paragraph and thesis
+            text = result['text'].strip()
+            parts = text.split('THESIS:')
+            
+            paragraph = parts[0].replace('PARAGRAPH:', '').strip()
+            thesis = parts[1].strip() if len(parts) > 1 else "Thesis not found"
+            
+            return {
+                "paragraph": paragraph,
+                "thesis": thesis
+            }
         except Exception as e:
-            return f"Error generating paragraph: {str(e)}"
+            return {
+                "paragraph": f"Error generating paragraph: {str(e)}",
+                "thesis": "Error generating thesis"
+            }
+
 
     def generate_multiple_paragraphs(self, topic_structure: Dict) -> Dict[str, str]:
         """
@@ -95,4 +123,4 @@ class ParagraphGenerator:
             )
             results[subtopic["question"]] = paragraph
             
-        return results
+        return results  
